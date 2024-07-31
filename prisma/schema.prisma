@@ -12,3 +12,177 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id           String         @id @default(uuid())
+  name         String
+  lastname     String
+  phone        String
+  photo        String?
+  birthday     String
+  email        String         @unique
+  username     String         @unique
+  password     String
+  role         Role           @default(COMMON)
+  status       Status         @default(INACTIVE)
+  created_at   DateTime       @default(now())
+  updated_at   DateTime       @default(now())
+  Post         Post[]
+  Comments     Comments[]
+  Reactions    Reactions[]
+  Replys       Replys[]
+  FriendsA     Friends[]      @relation("UserFriendA")
+  FriendsB     Friends[]      @relation("UserFriendB")
+  Events       Events[]
+  Participants Participants[]
+  Notification Notifications[]
+}
+
+model Post {
+  id           String   @id @default(uuid())
+  userId       String
+  content      String
+  datetime     DateTime @default(now())
+  photoUrl     String?
+  numComments  Int      @default(0)
+  numReactions Int      @default(0)
+  status       Status   @default(ACTIVE)
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Comments  Comments[]
+  Reactions Reactions[]
+}
+
+model Comments {
+  id       String   @id @default(uuid())
+  userId   String
+  postId   String
+  content  String
+  datetime DateTime @default(now())
+  status   Status   @default(ACTIVE)
+
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post   Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  Replys Replys[]
+}
+
+model Reactions {
+  id       String       @id @default(uuid())
+  userId   String
+  postId   String
+  type     ReactionType
+  datetime DateTime     @default(now())
+  status   Status       @default(ACTIVE)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Replys {
+  id        String   @id @default(uuid())
+  userId    String
+  commentId String
+  content   String
+  datetime  DateTime @default(now())
+  status    Status   @default(ACTIVE)
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comments @relation(fields: [commentId], references: [id], onDelete: Cascade)
+}
+
+model Friends {
+  id             String       @id @default(uuid())
+  userAId        String
+  userBId        String
+  dateFriendship DateTime     @default(now())
+  status         FriendStatus @default(EARRING)
+
+  userA User @relation("UserFriendA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("UserFriendB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId]) // AVOID DUPLICATES
+}
+
+model Events {
+  id          String   @id @default(uuid())
+  name        String
+  description String
+  photoUrl    String?
+  startDate   DateTime
+  endDate     DateTime
+  location    String
+  organizerId String
+  status      Status   @default(ACTIVE)
+  created_At  DateTime @default(now())
+  updated_At  DateTime @updatedAt()
+
+  Organizer    User           @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  Participants Participants[]
+}
+
+model Participants {
+  id      String              @id @default(uuid())
+  eventId String
+  userId  String
+  status  ParticipationStatus @default(EARRING)
+  event   Events              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId]) // AVOID DUPLICATES
+}
+
+model Notifications {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  message   String
+  isRead    Boolean          @default(false)
+  answer    Answer           @default(EARRING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  ADMIN
+  COMMON
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum ReactionType {
+  I_LIKE
+  I_LOVE
+  I_ENJOY
+  IT_AMAZES_ME
+  IT_SADDENS_ME
+  IT_PISSES_ME_OFF
+}
+
+enum FriendStatus {
+  EARRING
+  ACCEPTED
+  REJECTED
+}
+
+enum ParticipationStatus {
+  EARRING
+  ACCEPTED
+  REJECTED
+}
+
+enum NotificationType {
+  EVENT
+  BIRTHDAY
+  FRIEND
+}
+
+enum Answer {
+  EARRING
+  ACCEPTED
+  REJECTED
+}
