@@ -5,12 +5,58 @@ import {
 } from "../validations/auth.validation.js";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
-import { SALT_ROUNDS } from "../config.js";
+import { SALT_ROUNDS, SECRET_TOKEN } from "../config.js";
 
 // USE PRISMA CLI
 const prisma = new PrismaClient();
 
-export const signIn = async (req, res, next) => {};
+// MIDDLEWARE LOGIN SOCIAL NETWORK
+export const signIn = async (req, res, next) => {
+  try {
+    const { error, value } = validationSignIn.validate(req.body);
+
+    // IF BAD REQUEST IN FORM
+    if (error) return res.status(400).json({ error: error.details[0].message });
+
+    // FIND USER IN DATABASE
+    const user = await prisma.user.findUnique({
+      where: { username: value.username },
+    });
+
+    // IF USER NOT FOUND
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // IF USER NOT ACTIVE
+    if (user.status === "INACTIVE")
+      return res.status(400).json({ message: "User is not activated" });
+
+    // MATCH HASPASSWORD DATABASE WITH PASSWOR IN BODY
+    const macthPassword = await bcrypt.compare(value.password, user.password);
+
+    // IF NOT MATCH
+    if (!macthPassword)
+      return res.status(400).json({ message: "Invalid password" });
+
+    // CREATE JSONWEBTOKEN
+    const token = jwt.sign({ id: user.id }, SECRET_TOKEN, {
+      expiresIn: "1d",
+    });
+
+    // SET TOKEN IN COOKIE
+    res.cookie("x_access_token", token, {
+      httpOnly: true,
+      sameSite: "strict",
+      secure: true,
+      maxAge: 1000 * 60 * 60 * 24, // ONE DAY
+    });
+
+    return res.status(200).json({ message: "Successfully accesss", token });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+
+// MIDDLEWARE FOR REGISTER NEW USER
 export const signUp = async (req, res, next) => {
   try {
     const { error, value } = validationSignUp.validate(req.body);
@@ -64,6 +110,22 @@ export const signUp = async (req, res, next) => {
     return res.status(500).json({ message: error.message });
   }
 };
-export const forgetPassword = async (req, res, next) => {};
-export const forgetUser = async (req, res, next) => {};
-export const activationUser = async (req, res, next) => {};
+export const forgetPassword = async (req, res, next) => {
+  try {
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+export const forgetUser = async (req, res, next) => {
+  try {
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
+export const activationUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
+};
