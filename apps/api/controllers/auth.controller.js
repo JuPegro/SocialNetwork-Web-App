@@ -122,9 +122,36 @@ export const forgetUser = async (req, res, next) => {
     return res.status(500).json({ message: error.message });
   }
 };
+
+// MIDDLEWARE FOR ACTIVATED USER
 export const activationUser = async (req, res, next) => {
   try {
+    // GET ID IN REQUEST PARAMS
     const { id } = req.params;
+
+    // IF NOT PROVIDED ID
+    if (!id) return res.status(400).json({ message: "Id not provided" });
+
+    // FIND USER WITH THIS ID
+    const user = await prisma.user.findUnique({
+      where: { id: id },
+    });
+
+    // IF USER NOT FOUND
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // IF ALREADY ACTIVE
+    if (user.status === "ACTIVE")
+      return res.status(400).json({ message: "User is already activated" });
+
+    await prisma.user.update({
+      where: { id: id },
+      data: {
+        status: "ACTIVE",
+      },
+    });
+
+    return res.status(200).json({ message: "User has just been activated" });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
