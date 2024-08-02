@@ -1,14 +1,15 @@
-import jwt from "jsonwebtoken";
-import {
-  validationSignUp,
-  validationSignIn,
-} from "../validations/auth.validation.js";
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
-import { SALT_ROUNDS, SECRET_TOKEN } from "../config.js";
+import jwt from "jsonwebtoken";
+import { Resend } from "resend";
+import { PrismaClient } from "@prisma/client";
+import { validationSignUp, validationSignIn } from "../validations/auth.validation.js";
+import { SALT_ROUNDS, SECRET_TOKEN, RESEND_API_KEY, RESEND_FROM_EMAIL } from "../config.js";
 
 // USE PRISMA CLI
 const prisma = new PrismaClient();
+
+// USE RESEND
+const resend = new Resend(RESEND_API_KEY);
 
 // MIDDLEWARE LOGIN SOCIAL NETWORK
 export const signIn = async (req, res, next) => {
@@ -99,17 +100,30 @@ export const signUp = async (req, res, next) => {
       },
     });
 
+    // OMIT PASSWORD
     const { password: _, ...publicUser } = user;
+
+    // SEND EMAIL WITH RESEND
+    const { data, errors } = await resend.emails.send({
+      from: RESEND_FROM_EMAIL,
+      to: [user.email],
+      subject: "Welcome to SocialNetwork",
+      html: `<strong>Thanks for register${user.name} ${user.lastname}</strong>`,
+    });
+
+    // IF FAIL SEND EMAIL
+    if (errors) {
+      return res.status(400).json({ errors });
+    }
 
     return res
       .status(201)
-      .json({ message: "Successfully created user", publicUser });
-
-    console.log(error);
+      .json({ message: "Successfully created user", user: publicUser, data });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
+
 export const forgetPassword = async (req, res, next) => {
   try {
   } catch (error) {
